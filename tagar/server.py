@@ -1,4 +1,5 @@
 #!/usr/bin/python3.4
+import configparser
 from time import time, sleep
 import sched
 import threading
@@ -6,29 +7,31 @@ import socket
 import uuid
 import hashlib
 
-from agarnet.buffer import *
+from agarnet.buffer import BufferStruct
 
 from .opcodes import *
 from .session import *
 from .player import *
 
-UPDATE_RATE = 0.04
-
 
 class TeamServer:
-    def __init__(self, port, password=str()):
+    def __init__(self, address, port, password=str()):
+        self.address = address
         self.port = port
         self.password = password
         self.player_list = []
         self.player_list_lock = threading.Lock()
 
+        config = configparser.ConfigParser({'update_rate': '0.1'})
+        config.read('server.cfg')
+
+        self.update_rate = config.getfloat('Settings', 'update_rate')
+
         self.scheduler = sched.scheduler(time, sleep)
-        self.scheduler.enter(UPDATE_RATE, 1, self.update)
+        self.scheduler.enter(self.update_rate, 1, self.update)
         thread = threading.Thread(target=self.scheduler.run)
         thread.setDaemon(True)
         thread.start()
-
-        self.addr = ('127.0.0.1', port)
 
         server_thread = threading.Thread(target=self.start_service)
         server_thread.setDaemon(True)
@@ -40,10 +43,10 @@ class TeamServer:
     def start_service(self):
         self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-        self.serversocket.bind(self.addr)
-        self.serversocket.listen(2)
+        self.serversocket.bind((self.address, self.port))
+        self.serversocket.listen(5)
 
-        print("Server is listening for connections on ", self.addr[1])
+        print("Server is listening for connections on: %s:%d" % (self.address, self.port))
 
         while 1:
             clientsocket, clientaddr = self.serversocket.accept()
@@ -100,7 +103,7 @@ class TeamServer:
         self.player_list.remove(player)
 
     def update(self):
-        self.scheduler.enter(UPDATE_RATE, 1, self.update)
+        self.scheduler.enter(self.update_rate, 1, self.update)
 
         self.player_list_lock.acquire()
 

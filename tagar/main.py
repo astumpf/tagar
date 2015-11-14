@@ -1,6 +1,7 @@
 #!/usr/bin/python3.4
 import sys
-import time
+import configparser
+from time import sleep
 
 from .server import TeamServer
 
@@ -17,16 +18,16 @@ def main():
 
     port, password, *_ = sys.argv[1:] + ([None] * 3)
 
-    if port is None:
-        port = 5555
-    else:
-        port = int(port)
+    config = configparser.ConfigParser({'address': 'localhost',
+                                        'port': '5000',
+                                        'password': ''})
+    config.read('server.cfg')
 
+    address = config.get('Server', 'address')
+    port = config.getint('Server', 'port') if port is None else int(port)
+    password = config.get('Server', 'password') if password is None else password
 
-    if password is None:
-        password = str()
-
-    server = TeamServer(port, password)
+    server = TeamServer(address, port, password)
 
     while True:
-        time.sleep(1)
+        sleep(1)
