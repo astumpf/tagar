@@ -1,6 +1,6 @@
 #!/usr/bin/python3.4
 import configparser
-from time import time, sleep
+from time import time
 import sched
 import threading
 import socket
@@ -9,7 +9,6 @@ import hashlib
 
 from agarnet.buffer import BufferStruct
 
-from .opcodes import *
 from .session import *
 from .player import *
 

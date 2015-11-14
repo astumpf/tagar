@@ -1,6 +1,6 @@
 #!/usr/bin/python3.4
 from time import monotonic
-from agarnet.buffer import BufferStruct, BufferUnderflowError
+from agarnet.buffer import BufferStruct
 from agarnet.dispatcher import Dispatcher
 from .opcodes import *
 
