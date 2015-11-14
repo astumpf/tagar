@@ -4,6 +4,7 @@ import sched
 import threading
 import socket
 import uuid
+import hashlib
 
 from agarnet.buffer import *
 
@@ -53,18 +54,23 @@ class TeamServer:
         try:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
 
-            # get login
             buf = BufferStruct(sock.recv(1024))
-
             opcode = buf.pop_uint8()
-            password = buf.pop_null_str16()
 
             if opcode != 100:
                 print("Rejected connection from due to wrong opcode: ", addr)
                 sock.close()
                 return
 
-            if password != self.password:
+            # get client challenge
+            hash = buf.pop_null_str8()
+            rand = buf.pop_int8()
+            m = hashlib.md5()
+            m.update(self.password.encode('utf-16'))
+            m.update(str(rand).encode('utf-8'))
+
+            # check if hashes are matching
+            if m.hexdigest() != hash:
                 print("Rejected connection from due to wrong pw: ", addr)
                 sock.close()
                 return
