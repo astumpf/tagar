@@ -34,21 +34,24 @@ class TeamServer:
         server_thread.setDaemon(True)
         server_thread.start()
 
-    def start_service(self):
-        serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-        serversocket.bind(self.addr)
-        serversocket.listen(2)
+    def __del__(self):
+        self.serversocket.close()
 
-        print("Server is listening for connections on port ", self.addr[1])
+    def start_service(self):
+        self.serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.serversocket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+        self.serversocket.bind(self.addr)
+        self.serversocket.listen(2)
+
+        print("Server is listening for connections on ", self.addr[1])
 
         while 1:
-            clientsocket, clientaddr = serversocket.accept()
+            clientsocket, clientaddr = self.serversocket.accept()
             thread = threading.Thread(target=self.client_handler, args=(clientsocket, clientaddr))
             thread.setDaemon(True)
             thread.start()
 
-        serversocket.close()
+        self.serversocket.close()
 
     def client_handler(self, sock, addr):
         try:
@@ -64,7 +67,7 @@ class TeamServer:
 
             # get client challenge
             hash = buf.pop_null_str8()
-            rand = buf.pop_int8()
+            rand = buf.pop_uint8()
             m = hashlib.md5()
             m.update(self.password.encode('utf-16'))
             m.update(str(rand).encode('utf-8'))

@@ -3,9 +3,9 @@ try:
 except ImportError:
     from distutils.core import setup
 
-setup(name='gagar',
-      packages=['gagar'],
-      py_modules=['gagar'],
+setup(name='tagar',
+      packages=['tagar'],
+      py_modules=['tagar'],
       version='0.0.1',
       description='Standalone team server for agario',
       author='astumpf',
