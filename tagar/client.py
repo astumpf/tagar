@@ -13,14 +13,16 @@ from agarnet.dispatcher import Dispatcher
 from tagar.session import Session
 from tagar.player import Player
 from tagar.opcodes import *
+from tagar.world import World
 
 
 class TagarClient:
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, agar_client):
+        self.agar_client = agar_client
+        self.player = Player()
         self.dispatcher = Dispatcher(packet_s2c, self)
         self.player_list = []
-        self.last_world_buf = None
+        self.team_world = World()
         self.session = None
 
         config = configparser.ConfigParser({'address': 'localhost',
@@ -83,11 +85,10 @@ class TagarClient:
             print("Connected to tagar server: %s:%d" % (addr, port))
 
             self.session = Session(buf.pop_null_str8(), sock)
+            self.player = Player(self.session)
 
         except socket.error:
-            pass
-        finally:
-            pass
+            print("Could not connect to tagar server: %s:%d" % (addr, port))
 
     def disconnect(self):
         self.session.disconnect()
@@ -114,17 +115,24 @@ class TagarClient:
             return
 
         # collect player info
-        p = Player(self.session)
-        p.nick = self.client.player.nick
-        p.position_x, p.position_y = self.client.player.center
-        p.mass = self.client.player.total_mass
-        p.is_alive = self.client.player.is_alive
-        p.party_token = self.client.server_token if len(self.client.server_token) == 5 else 'FFA'
+        self.player.update_player_state(self.agar_client.player, self.agar_client.server_token)
+
+        # collect world status
+        self.player.world.pre_update_world()
+        self.player.world.update_world(self.agar_client.player.world.cells.copy())
 
         # send update
         try:
-            buf = BufferStruct(opcode=110)
-            p.pack_player_update(buf)
+            buf = BufferStruct()
+
+            # player status
+            buf.push_uint8(110)
+            self.player.pack_player_update(buf)
+
+            # world status
+            buf.push_uint8(111)
+            self.player.world.pack_world_update(buf)
+
             self.session.sendall(buf.buffer)
         except socket.error:
             self.disconnect()
@@ -138,3 +146,6 @@ class TagarClient:
             p.parse_player_update(buf)
             if str(self.session.id) != p.id:
                 self.player_list.append(p)
+
+    def parse_world_update(self, buf):
+        self.team_world.parse_world_update(buf)

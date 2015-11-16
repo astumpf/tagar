@@ -11,6 +11,7 @@ class Session:
         self.sock = sock
         self.recv_msgs = []
         self.is_connected = sock is not None
+        self.recv_msgs_lock = threading.Lock()
 
         if self.is_connected:
             recv_thread = threading.Thread(target=self._recv_data)
@@ -25,26 +26,33 @@ class Session:
             self.sock.close()
             print("Closed session ", self.id)
 
-    def has_new_msg(self):
-        return len(self.recv_msgs) > 0
-
-    def pop_msg(self):
-        if self.has_new_msg():
-            return self.recv_msgs.pop(0)
-        else:
-            return None
-
     def _recv_data(self):
         try:
             while 1:
                 msg = self.recvall()
                 if msg is not None:
-                    self.recv_msgs.append(msg)
+                    self.push_msg(msg)
                 else:
                     self.disconnect()
                     return
         except socket.error:
             self.disconnect()
+
+    def has_new_msg(self):
+        return len(self.recv_msgs) > 0
+
+    def push_msg(self, msg):
+        self.recv_msgs_lock.acquire()
+        self.recv_msgs.append(msg)
+        self.recv_msgs_lock.release()
+
+    def pop_msg(self):
+        msg = None
+        self.recv_msgs_lock.acquire()
+        if self.has_new_msg():
+            msg = self.recv_msgs.pop(0)
+        self.recv_msgs_lock.release()
+        return msg
 
     def sendall(self, msg):
         # Prefix each message with a 4-byte length

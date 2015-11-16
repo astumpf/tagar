@@ -11,6 +11,7 @@ from agarnet.buffer import BufferStruct
 
 from .session import *
 from .player import *
+from .world import *
 
 
 class TeamServer:
@@ -18,8 +19,12 @@ class TeamServer:
         self.address = address
         self.port = port
         self.password = password
+
         self.player_list = []
         self.player_list_lock = threading.Lock()
+
+        self.world = World()
+        self.world_lock = threading.Lock()
 
         config = configparser.ConfigParser({'update_rate': '0.1'})
         config.read('server.cfg')
@@ -63,7 +68,7 @@ class TeamServer:
             opcode = buf.pop_uint8()
 
             if opcode != 100:
-                print("Rejected connection from due to wrong opcode: ", addr)
+                print("Rejected connection from %s due to wrong opcode %d!" % (addr, opcode))
                 sock.close()
                 return
 
@@ -76,7 +81,7 @@ class TeamServer:
 
             # check if hashes are matching
             if m.hexdigest() != hash:
-                print("Rejected connection from due to wrong pw: ", addr)
+                print("Rejected connection from %s due to wrong password!" % (addr,))
                 sock.close()
                 return
 
@@ -107,27 +112,40 @@ class TeamServer:
         self.player_list_lock.acquire()
 
         try:
-            player_list = BufferStruct()
-            player_list_len = 0
-
             # handle incoming player updates and collect data for sending back to clients
             for p in self.player_list:
                 try:
                     p.handle_msgs()
-                    p.pack_player_update(player_list)
-                    player_list_len += 1
                 except socket.error:
                     self.disconnect_client(p)
 
+            # TODO: extract method
+            # update world
+            cells = {}
+            for p in self.player_list:
+                cells.update(p.world.cells)
+
+            self.world.pre_update_world()
+            self.world.update_world(cells)
+            # TODO: end extract method
+
+            # TODO: extract method
             # prepare player_update_list package
             player_list_update = BufferStruct(opcode=210)
-            player_list_update.push_uint32(player_list_len)
-            player_list_update.append(player_list)
+            player_list_update.push_uint32(len(self.player_list))
+            for p in self.player_list:
+                p.pack_player_update(player_list_update)
+
+            # TODO: send full map when player just has logged in
+            # prepare world_update package
+            world_update = BufferStruct(opcode=211)
+            self.world.pack_world_update(world_update)
+            # TODO: end extract method
 
             # send message to all clients
             for p in self.player_list:
                 try:
-                    p.session.sendall(player_list_update.buffer)
+                    p.session.sendall(player_list_update.buffer + world_update.buffer)
                 except socket.error:
                     self.disconnect_client(p)
         finally:
