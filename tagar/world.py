@@ -60,7 +60,7 @@ class World:
 
         # check for updated cells (updated only once per cycle!)
         if cell.cid not in self.updated_cells:
-            if self.cells[cell.cid].pos != cell.pos or self.cells[cell.cid].size != cell.size:
+            if self.cells[cell.cid].pos.x != cell.pos.x or self.cells[cell.cid].pos.y != cell.pos.y or self.cells[cell.cid].size != cell.size:
                 self.cells[cell.cid].update(cell=cell)
                 self.updated_cells.append(cell.cid)
 
