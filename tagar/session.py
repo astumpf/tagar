@@ -6,8 +6,8 @@ import struct
 
 
 class Session:
-    def __init__(self, id, sock=None):
-        self.id = id
+    def __init__(self, sid, sock=None):
+        self.sid = sid
         self.sock = sock
         self.recv_msgs = []
         self.is_connected = sock is not None
@@ -18,13 +18,13 @@ class Session:
             recv_thread.setDaemon(True)
             recv_thread.start()
 
-        print("Started session ", self.id)
+        print("Started session ", self.sid)
 
     def disconnect(self):
         if self.is_connected:
             self.is_connected = False
             self.sock.close()
-            print("Closed session ", self.id)
+            print("Closed session ", self.sid)
 
     def _recv_data(self):
         try:

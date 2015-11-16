@@ -21,9 +21,10 @@ class TagarClient:
         self.agar_client = agar_client
         self.player = Player()
         self.dispatcher = Dispatcher(packet_s2c, self)
-        self.player_list = []
+        self.player_list = {}
         self.team_world = World()
         self.session = None
+        self.force_player_update = False
 
         config = configparser.ConfigParser({'address': 'localhost',
                                             'port': '5000',
@@ -86,6 +87,7 @@ class TagarClient:
 
             self.session = Session(buf.pop_null_str8(), sock)
             self.player = Player(self.session)
+            self.force_player_update = True
 
         except socket.error:
             print("Could not connect to tagar server: %s:%d" % (addr, port))
@@ -115,7 +117,8 @@ class TagarClient:
             return
 
         # collect player info
-        self.player.update_player_state(self.agar_client.player, self.agar_client.server_token)
+        self.player.pre_update_player_state()
+        self.player.update_player_state(sid=self.session.sid, player=self.agar_client.player, party_token=self.agar_client.server_token)
 
         # collect world status
         self.player.world.pre_update_world()
@@ -126,26 +129,34 @@ class TagarClient:
             buf = BufferStruct()
 
             # player status
-            buf.push_uint8(110)
-            self.player.pack_player_update(buf)
+            if self.player.has_update() or self.force_player_update:
+                buf.push_uint8(110)
+                self.player.pack_player_update(buf)
+            self.force_player_update = False
 
             # world status
-            buf.push_uint8(111)
-            self.player.world.pack_world_update(buf)
+            if self.player.world.has_update():
+                buf.push_uint8(111)
+                self.player.world.pack_world_update(buf)
 
-            self.session.sendall(buf.buffer)
+            if buf.buffer:
+                self.session.sendall(buf.buffer)
         except socket.error:
             self.disconnect()
 
     def parse_player_list_update(self, buf):
-        list_length = buf.pop_uint32()
-
-        self.player_list = []
-        for i in range(0, list_length):
+        # update players
+        for i in range(0, buf.pop_uint32()):
             p = Player()
             p.parse_player_update(buf)
-            if str(self.session.id) != p.id:
-                self.player_list.append(p)
+            if str(self.session.sid) != p.sid:
+                self.player_list[p.sid] = p
+
+        # removed logged out players
+        for i in range(0, buf.pop_uint32()):
+            sid = buf.pop_len_str8()
+            if sid in self.player_list:
+                del self.player_list[sid]
 
     def parse_world_update(self, buf):
         self.team_world.parse_world_update(buf)

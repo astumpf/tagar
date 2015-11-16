@@ -50,6 +50,9 @@ class World:
         self.cells = {}
         self.last_update_time = monotonic()
 
+    def has_update(self):
+        return self.added_cells or self.updated_cells or self.removed_cells
+
     def update_cell(self, cell):
         # check for added cells
         if cell.cid not in self.cells:

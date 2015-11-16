@@ -21,10 +21,13 @@ class TeamServer:
         self.password = password
 
         self.player_list = []
+        self.logged_off_player_list = []
         self.player_list_lock = threading.Lock()
 
         self.world = World()
         self.world_lock = threading.Lock()
+
+        self.force_player_list_update = False
 
         config = configparser.ConfigParser({'update_rate': '0.1'})
         config.read('server.cfg')
@@ -96,8 +99,15 @@ class TeamServer:
             sock.send(buf.buffer)
 
             self.player_list_lock.acquire()
-            self.player_list.append(Player(Session(id, sock)))
+            self.world_lock.acquire()
+
+            session = Session(id, sock)
+            self.player_list.append(Player(session))
+            self.force_player_list_update = True
+            # TODO: Send full map
+
             self.player_list_lock.release()
+            self.world_lock.release()
 
         except socket.error:
             sock.close()
@@ -105,48 +115,79 @@ class TeamServer:
     def disconnect_client(self, player):
         player.session.disconnect()
         self.player_list.remove(player)
+        self.logged_off_player_list.append(player.sid)
 
     def update(self):
         self.scheduler.enter(self.update_rate, 1, self.update)
 
         self.player_list_lock.acquire()
+        self.world_lock.acquire()
 
         try:
             # handle incoming player updates and collect data for sending back to clients
-            for p in self.player_list:
+            for p in list(self.player_list):
+                if not p.session.is_connected:
+                    self.disconnect_client(p)
+                    continue
                 try:
                     p.handle_msgs()
                 except socket.error:
                     self.disconnect_client(p)
 
             # TODO: extract method
-            # update world
+            # update shared world
             cells = {}
-            for p in self.player_list:
+            for p in self.player_list: # merge all client's world
                 cells.update(p.world.cells)
 
             self.world.pre_update_world()
             self.world.update_world(cells)
             # TODO: end extract method
 
-            # TODO: extract method
-            # prepare player_update_list package
-            player_list_update = BufferStruct(opcode=210)
-            player_list_update.push_uint32(len(self.player_list))
-            for p in self.player_list:
-                p.pack_player_update(player_list_update)
+            # prepare broadcast update
+            buf = BufferStruct()
 
-            # TODO: send full map when player just has logged in
+            # prepare player_update_list package
+            self.pack_player_list(buf, self.force_player_list_update)
+            self.logged_off_player_list = []
+            self.force_player_list_update = False
+
+            # TODO: send full map when player has just logged in
             # prepare world_update package
-            world_update = BufferStruct(opcode=211)
-            self.world.pack_world_update(world_update)
-            # TODO: end extract method
+            self.pack_world_update(buf)
 
             # send message to all clients
-            for p in self.player_list:
-                try:
-                    p.session.sendall(player_list_update.buffer + world_update.buffer)
-                except socket.error:
-                    self.disconnect_client(p)
+            if buf.buffer:
+                for p in self.player_list:
+                    try:
+                        p.session.sendall(buf.buffer)
+                    except socket.error:
+                        self.disconnect_client(p)
         finally:
             self.player_list_lock.release()
+            self.world_lock.release()
+
+    def pack_player_list(self, buf=BufferStruct(), force_update=False):
+        # prepare player_update_list package
+        updated_players = [p for p in self.player_list if p.has_update() or force_update]
+        if not updated_players and not self.logged_off_player_list:
+            return buf
+
+        buf.push_uint8(210)
+
+        # add player update
+        buf.push_uint32(len(updated_players))
+        for p in updated_players:
+            p.pack_player_update(buf)
+
+        # add logged out players
+        buf.push_uint32(len(self.logged_off_player_list))
+        for sid in self.logged_off_player_list:
+            buf.push_len_str8(sid)
+        return buf
+
+    def pack_world_update(self, buf=BufferStruct()):
+        if self.world.has_update():
+            buf.push_uint8(211)
+            self.world.pack_world_update(buf)
+        return buf
