@@ -13,7 +13,7 @@ setup(name='tagar',
       url='https://github.com/astumpf/tagar',
       license='GPLv3',
       install_requires=[
-          'agarnet >= 0.1.3',
+          'agarnet >= 0.2.2',
       ],
       entry_points={'gui_scripts': ['gagar = gagar.main:main']},
       classifiers=[
