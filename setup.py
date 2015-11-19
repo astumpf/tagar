@@ -6,10 +6,10 @@ except ImportError:
 setup(name='tagar',
       packages=['tagar'],
       py_modules=['tagar'],
-      version='0.0.1',
+      version='0.1.0',
       description='Standalone team server for agario',
       author='astumpf',
-      author_email='code.gjum@gmail.com',
+      author_email='Stumpf.Alex@web.de',
       url='https://github.com/astumpf/tagar',
       license='GPLv3',
       install_requires=[
