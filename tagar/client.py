@@ -23,6 +23,7 @@ class TagarClient:
         self.dispatcher = Dispatcher(packet_s2c, self)
         self.player_list = {}
         self.team_world = World()
+        self.team_cids = set()
         self.session = None
         self.force_player_update = False
 
@@ -134,7 +135,7 @@ class TagarClient:
         # collect world status
         self.player.world.pre_update_world()
         cells = self.agar_client.player.world.cells.copy()
-        cells = {cid: c for cid, c in cells.items() if cid in self.player.own_ids or c.mass > 25 or c.is_food or c.is_ejected_mass}
+        cells = {cid: c for cid, c in cells.items() if cid in self.player.own_ids or c.mass > 20 or c.is_food or c.is_ejected_mass}
         self.player.world.update_world(cells)
 
         # send update
@@ -170,6 +171,11 @@ class TagarClient:
             sid = buf.pop_len_str8()
             if sid in self.player_list:
                 del self.player_list[sid]
+
+        # update team cids
+        self.team_cids = set()
+        for p in self.player_list.values():
+            self.team_cids.update(p.own_ids)
 
     def parse_world_update(self, buf):
         self.team_world.parse_world_update(buf)

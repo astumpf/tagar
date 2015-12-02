@@ -43,7 +43,15 @@ class Player:
             is_alive = player.is_alive
 
         party_token = party_token if len(party_token) == 5 else 'FFA'
-        self.is_updated = self.nick != nick or self.party_token != party_token or (self.is_alive and (self.position_x != x or self.position_y != y or self.total_mass != total_mass or self.is_alive != is_alive))
+        self.is_updated = (self.nick != nick or self.party_token != party_token or
+                           (self.is_alive and
+                            (self.position_x != x or
+                             self.position_y != y or
+                             self.total_mass != total_mass or
+                             self.own_ids != own_ids or
+                             self.is_alive != is_alive)
+                            )
+                           )
         self.sid = copy(sid)
         self.nick = copy(nick)
         self.position_x = copy(x)
