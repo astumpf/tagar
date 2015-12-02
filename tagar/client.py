@@ -123,7 +123,7 @@ class TagarClient:
         # collect world status
         self.player.world.pre_update_world()
         cells = self.agar_client.player.world.cells.copy()
-        cells = {cid: c for cid, c in cells.items() if cid in self.player.own_ids or c.mass > 25}
+        cells = {cid: c for cid, c in cells.items() if cid in self.player.own_ids or c.mass > 25 or c.is_food or c.is_ejected_mass}
         self.player.world.update_world(cells)
 
         # send update
