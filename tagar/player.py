@@ -18,6 +18,7 @@ class Player:
         self.position_x = 0.0
         self.position_y = 0.0
         self.total_mass = 0.0
+        self.own_ids = set()
         self.is_alive = False
         self.party_token = str()
 
@@ -33,11 +34,12 @@ class Player:
     def pre_update_player_state(self):
         self.is_updated = False
 
-    def update_player_state(self, sid=-1, nick='', x=0.0, y=0.0, total_mass=0.0, is_alive=False, party_token='', player=None):
+    def update_player_state(self, sid=-1, nick='', x=0.0, y=0.0, total_mass=0.0, own_ids=set(), is_alive=False, party_token='', player=None):
         if player:
             nick = player.nick
             x, y = player.center
             total_mass = player.total_mass
+            own_ids = player.own_ids
             is_alive = player.is_alive
 
         party_token = party_token if len(party_token) == 5 else 'FFA'
@@ -47,6 +49,7 @@ class Player:
         self.position_x = copy(x)
         self.position_y = copy(y)
         self.total_mass = copy(total_mass)
+        self.own_ids = own_ids.copy()
         self.is_alive = copy(is_alive)
         self.party_token = copy(party_token)
         self.last_update_time = monotonic()
@@ -76,6 +79,9 @@ class Player:
         buf.push_float32(self.position_x)
         buf.push_float32(self.position_y)
         buf.push_float32(self.total_mass)
+        buf.push_uint8(len(self.own_ids))
+        for cid in self.own_ids:
+            buf.push_uint32(cid)
         buf.push_bool(self.is_alive)
         buf.push_null_str16(self.party_token)
         return buf
@@ -86,7 +92,10 @@ class Player:
         x = buf.pop_float32()
         y = buf.pop_float32()
         total_mass = buf.pop_float32()
+        own_ids = set()
+        for i in range(buf.pop_uint8()):
+            own_ids.add(buf.pop_uint32())
         is_alive = buf.pop_bool()
         party_token = buf.pop_null_str16()
-        self.update_player_state(sid, nick, x, y, total_mass, is_alive, party_token)
+        self.update_player_state(sid, nick, x, y, total_mass, own_ids, is_alive, party_token)
         return buf
