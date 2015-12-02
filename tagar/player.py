@@ -62,7 +62,7 @@ class Player:
 
     def parse_msg(self, msg):
         buf = BufferStruct(msg)
-        while len(buf.buffer) > 0:
+        while not buf.empty():
             self.dispatcher.dispatch(buf)
 
     def parse_player_update(self, buf):

@@ -84,7 +84,23 @@ class TeamServer:
 
             # check if hashes are matching
             if m.hexdigest() != hash:
-                print("Rejected connection from %s due to wrong password!" % (addr,))
+                msg = str("Rejected connection from %s due to wrong password!" % (addr,))
+                print(msg)
+
+                buf = BufferStruct(opcode=201)
+                buf.push_len_str16(msg)
+                sock.send(buf.buffer)
+                sock.close()
+                return
+
+            client_version = buf.pop_len_str8()
+            if client_version != str(PROTOCOL_VERSION):
+                msg = str("Rejected connection from %s due to wrong protocol version (Client: %s, Server: %s)!" % (addr, client_version, str(PROTOCOL_VERSION)))
+                print(msg)
+
+                buf = BufferStruct(opcode=201)
+                buf.push_len_str16(msg)
+                sock.send(buf.buffer)
                 sock.close()
                 return
 
@@ -95,7 +111,12 @@ class TeamServer:
 
             # send session id to client
             buf = BufferStruct(opcode=200)
-            buf.push_null_str8(str(id))
+            buf.push_len_str8(str(id))
+
+            # add welcome message
+            buf.push_uint8(201)
+            buf.push_len_str16("Welcome on Tagar server at %s" % (self.address,))
+
             sock.send(buf.buffer)
 
             self.player_list_lock.acquire()

@@ -67,25 +67,36 @@ class TagarClient:
             # send login challenge
             buf.push_null_str8(m.hexdigest())
             buf.push_uint8(rand)
+
+            # add protocol version
+            buf.push_len_str8(str(PROTOCOL_VERSION))
             sock.send(buf.buffer)
 
             # Receive data from the server
             msg = sock.recv(1024)
             if msg is None or len(msg) == 0:
-                print("Connection to team server rejected!")
-                return
+                msg = str()
+
+            sid = None
 
             buf = BufferStruct(msg)
+            while not buf.empty():
+                opcode = buf.pop_uint8()
 
-            opcode = buf.pop_uint8()
+                if opcode == 200:
+                    print("Connected to tagar server: %s:%d" % (addr, port))
+                    sid = buf.pop_len_str8()
+                    login_ok = True
 
-            if opcode != 200:
+                if opcode == 201:
+                    print("[Tagar Server]: %s" % (buf.pop_len_str16(),))
+
+            if not sid:
+                print("Connection to team server rejected!")
                 sock.close()
                 return
 
-            print("Connected to tagar server: %s:%d" % (addr, port))
-
-            self.session = Session(buf.pop_null_str8(), sock)
+            self.session = Session(sid, sock)
             self.player = Player(self.session)
             self.force_player_update = True
 
@@ -107,7 +118,7 @@ class TagarClient:
                 return
 
             buf = BufferStruct(msg)
-            while len(buf.buffer) > 0:
+            while not buf.empty():
                 self.dispatcher.dispatch(buf)
 
     def send_update(self):
