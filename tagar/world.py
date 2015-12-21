@@ -10,8 +10,8 @@ class Cell(agarnet.world.Cell):
         self.last_update_time = monotonic()
 
     def update(self, cid=-1, x=0, y=0, size=0, name='',
-               color=(1, 0, 1), is_virus=False, is_agitated=False, cell=None):
-        super(Cell, self).update(cid, x, y, size, name, color, is_virus, is_agitated, cell)
+               color=(1, 0, 1), is_virus=False, is_agitated=False, skin=str(), cell=None):
+        super(Cell, self).update(cid, x, y, size, name, color, is_virus, is_agitated, skin, cell)
         self.last_update_time = monotonic()
 
     def pack_cell_update(self, buf=BufferStruct()):
