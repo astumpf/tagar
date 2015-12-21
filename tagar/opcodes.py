@@ -1,6 +1,6 @@
 #!/usr/bin/python3.4
 
-PROTOCOL_VERSION = 1.1
+PROTOCOL_VERSION = "1.1.1"
 
 packet_c2s = {
     100: 'login',

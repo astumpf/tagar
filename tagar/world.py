@@ -23,6 +23,7 @@ class Cell(agarnet.world.Cell):
         tuple(map(lambda rgb: buf.push_uint8(int(rgb * 255.0)), self.color))
         buf.push_bool(self.is_virus)
         buf.push_bool(self.is_agitated)
+        buf.push_len_str8(self.skin)
         return buf
 
     def unpack_cell_update(self, buf):
@@ -34,7 +35,8 @@ class Cell(agarnet.world.Cell):
         color = (buf.pop_uint8(), buf.pop_uint8(), buf.pop_uint8())
         is_virus = buf.pop_bool()
         is_agitated = buf.pop_bool()
-        self.update(cid, x, y, size, name, color, is_virus, is_agitated)
+        skin = buf.pop_len_str8()
+        self.update(cid, x, y, size, name, color, is_virus, is_agitated, skin)
         return buf
 
 

@@ -94,7 +94,7 @@ class TeamServer:
                 return
 
             client_version = buf.pop_len_str8()
-            if client_version != str(PROTOCOL_VERSION):
+            if client_version != PROTOCOL_VERSION:
                 msg = str("Rejected connection from %s due to wrong protocol version (Client: %s, Server: %s)!" % (addr, client_version, str(PROTOCOL_VERSION)))
                 print(msg)
 

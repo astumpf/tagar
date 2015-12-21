@@ -70,7 +70,7 @@ class TagarClient:
             buf.push_uint8(rand)
 
             # add protocol version
-            buf.push_len_str8(str(PROTOCOL_VERSION))
+            buf.push_len_str8(PROTOCOL_VERSION)
             sock.send(buf.buffer)
 
             # Receive data from the server
